@@ -1,0 +1,33 @@
+name: Temporary ML-PEG public-data relay
+
+on:
+  push:
+    branches: [codex-data-relay]
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [s3, pressure, low-dimensional, phonons]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fetch dependencies
+        run: python -m pip install requests beautifulsoup4
+      - name: Fetch and validate public benchmark inputs
+        run: python scripts/fetch_public_inputs.py --root staging --workers 8 --group '${{ matrix.group }}'
+      - name: Record manifest
+        run: cd staging && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+      - name: Upload relay artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-peg-public-inputs-${{ matrix.group }}
+          path: staging
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
