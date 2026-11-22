@@ -4,6 +4,9 @@ on:
   push:
     branches: [fairchem-bench-relay]
 
+permissions:
+  contents: write
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -25,9 +28,11 @@ jobs:
             python3 -c "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None" "staging/$key"
           done
           cd staging && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && cat SHA256SUMS
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ml-peg-s3-inputs
-          path: staging
-          retention-days: 1
-          if-no-files-found: error
+      - name: Push inputs to an orphan data branch
+        run: |
+          set -euo pipefail
+          cd staging
+          git init -q -b fairchem-bench-relay-data
+          git add -A
+          git -c user.name=relay -c user.email=relay@users.noreply.github.com commit -qm "ML-PEG S3 inputs"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:fairchem-bench-relay-data
