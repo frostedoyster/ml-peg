@@ -1,0 +1,33 @@
+name: Temporary ML-PEG S3 relay for fairchem-bench
+
+on:
+  push:
+    branches: [fairchem-bench-relay]
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Download S3 inputs
+        run: |
+          set -euo pipefail
+          mkdir -p staging
+          for key in \
+            inputs/GSCDB138/GSCDB138.zip \
+            inputs/surfaces/SBH17/SBH17.zip \
+            inputs/surfaces/S24/S24.zip \
+            inputs/surfaces/metal_surface_reconstructions/metal_surface_reconstructions.zip \
+            inputs/molecular_crystal/DMC_ICE13/DMC_ICE13.zip \
+            inputs/defects/Defectstab/Defectstab.zip; do
+            mkdir -p "staging/$(dirname "$key")"
+            curl -fsSL --retry 8 --retry-delay 10 -o "staging/$key" "https://s3.echo.stfc.ac.uk/ml-peg-data/$key"
+            python3 -c "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None" "staging/$key"
+          done
+          cd staging && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ml-peg-s3-inputs
+          path: staging
+          retention-days: 1
+          if-no-files-found: error
