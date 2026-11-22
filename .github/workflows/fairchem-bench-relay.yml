@@ -19,8 +19,9 @@ jobs:
           curl -fsSL --retry 8 --retry-delay 10 -o data.tar.gz "https://s3.echo.stfc.ac.uk/ml-peg-data/app/data/data.tar.gz"
           ls -la data.tar.gz
           sha256sum data.tar.gz > staging/app/data.tar.gz.sha256
-          split -b 90m -d -a 3 data.tar.gz staging/app/data.tar.gz.part
-          ls -la staging/app
+          tar -tzf data.tar.gz > staging/app/listing.txt
+          tar -xzf data.tar.gz -C staging/app --wildcards '*metrics_table.json'
+          du -sh staging/app
       - name: Push inputs to an orphan data branch
         run: |
           set -euo pipefail
