@@ -12,25 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - name: Download S3 inputs
+      - name: Download the ML-PEG app data
         run: |
           set -euo pipefail
-          mkdir -p staging
-          for key in \
-            inputs/GSCDB138/GSCDB138.zip \
-            inputs/surfaces/SBH17/SBH17.zip \
-            inputs/surfaces/S24/S24.zip \
-            inputs/surfaces/metal_surface_reconstructions/metal_surface_reconstructions.zip \
-            inputs/molecular_crystal/DMC_ICE13/DMC_ICE13.zip \
-            inputs/defects/Defectstab/Defectstab.zip; do
-            mkdir -p "staging/$(dirname "$key")"
-            curl -fsSL --retry 8 --retry-delay 10 -o "staging/$key" "https://s3.echo.stfc.ac.uk/ml-peg-data/$key"
-            python3 -c "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None" "staging/$key"
-          done
-          mkdir -p staging/dftd3
-          curl -fsSL --retry 8 --retry-delay 10 -o staging/dftd3/dftd3.tgz https://www.chemie.uni-bonn.de/grimme/de/software/dft-d3/dftd3.tgz
-          echo "a76c752e587422c239c99109547516d2  staging/dftd3/dftd3.tgz" | md5sum -c
-          cd staging && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && cat SHA256SUMS
+          mkdir -p staging/app
+          curl -fsSL --retry 8 --retry-delay 10 -o data.tar.gz "https://s3.echo.stfc.ac.uk/ml-peg-data/app/data/data.tar.gz"
+          ls -la data.tar.gz
+          sha256sum data.tar.gz > staging/app/data.tar.gz.sha256
+          split -b 90m -d -a 3 data.tar.gz staging/app/data.tar.gz.part
+          ls -la staging/app
       - name: Push inputs to an orphan data branch
         run: |
           set -euo pipefail
@@ -38,4 +28,4 @@ jobs:
           git init -q -b fairchem-bench-relay-data
           git add -A
           git -c user.name=relay -c user.email=relay@users.noreply.github.com commit -qm "ML-PEG S3 inputs"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:fairchem-bench-relay-data
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:fairchem-bench-relay-appdata
