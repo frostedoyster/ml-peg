@@ -24,9 +24,14 @@ jobs:
           du -sh staging/app
       - name: Push inputs to an orphan data branch
         run: |
-          set -euo pipefail
           cd staging
-          git init -q -b fairchem-bench-relay-data
-          git add -A
-          git -c user.name=relay -c user.email=relay@users.noreply.github.com commit -qm "ML-PEG S3 inputs"
-          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:fairchem-bench-relay-appdata
+          {
+            set -euo pipefail
+            echo "files: $(find . -type f | wc -l), size: $(du -sh . | cut -f1)"
+            find . -type f -size +50M
+            git init -q -b fairchem-bench-relay-appdata
+            git add -A
+            git -c user.name=relay -c user.email=relay@users.noreply.github.com commit -qm "ML-PEG app metrics tables"
+            git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:fairchem-bench-relay-appdata
+          } > ../push.log 2>&1 || { echo "::error::$(tail -c 900 ../push.log | tr '\n' ' ')"; exit 1; }
+          echo "::notice::$(tail -c 900 ../push.log | tr '\n' ' ')"
