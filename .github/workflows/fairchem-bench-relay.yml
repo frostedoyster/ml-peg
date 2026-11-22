@@ -27,6 +27,9 @@ jobs:
             curl -fsSL --retry 8 --retry-delay 10 -o "staging/$key" "https://s3.echo.stfc.ac.uk/ml-peg-data/$key"
             python3 -c "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None" "staging/$key"
           done
+          mkdir -p staging/dftd3
+          curl -fsSL --retry 8 --retry-delay 10 -o staging/dftd3/dftd3.tgz https://www.chemie.uni-bonn.de/grimme/de/software/dft-d3/dftd3.tgz
+          echo "a76c752e587422c239c99109547516d2  staging/dftd3/dftd3.tgz" | md5sum -c
           cd staging && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && cat SHA256SUMS
       - name: Push inputs to an orphan data branch
         run: |
